@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="중환자실/응급실용 SOFA 점수 계산기 - Sepsis 진단 도구">
+    <meta name="theme-color" content="#3B82F6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SOFA Calc">
+
+    <title>SOFA Score Calculator</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        score0: { light: '#F3F4F6', dark: '#374151' },
+                        score1: { light: '#FEF3C7', dark: '#78350F' },
+                        score2: { light: '#FDE047', dark: '#A16207' },
+                        score3: { light: '#FB923C', dark: '#C2410C' },
+                        score4: { light: '#EF4444', dark: '#B91C1C' },
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom styles */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        .score-badge {
+            min-width: 2rem;
+            text-align: center;
+        }
+
+        /* Smooth transitions */
+        .section-card {
+            transition: all 0.3s ease;
+        }
+
+        /* Safe area for notch devices */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .sticky-header {
+                padding-top: env(safe-area-inset-top);
+            }
+            .main-content {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+
+    <!-- Sticky Header -->
+    <header class="sticky-header sticky top-0 z-50 bg-blue-600 dark:bg-blue-800 text-white shadow-lg">
+        <div class="max-w-lg mx-auto px-4 py-3">
+            <div class="flex items-center justify-between mb-2">
+                <h1 class="text-lg font-bold">SOFA Score Calculator</h1>
+                <button id="darkModeToggle" class="p-2 rounded-lg bg-blue-500 dark:bg-blue-700 hover:bg-blue-400 dark:hover:bg-blue-600 transition">
+                    <svg id="sunIcon" class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+                    </svg>
+                    <svg id="moonIcon" class="w-5 h-5 block dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <div class="text-center">
+                    <div class="text-3xl font-bold" id="totalScore">0</div>
+                    <div class="text-xs opacity-80">Total Score</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-semibold" id="mortality">&lt;10%</div>
+                    <div class="text-xs opacity-80">예상 사망률</div>
+                </div>
+            </div>
+
+            <!-- Sepsis Alert -->
+            <div id="sepsisAlert" class="hidden mt-3 p-2 bg-red-500 rounded-lg text-center font-semibold animate-pulse">
+                Sepsis 진단 기준 충족
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content max-w-lg mx-auto px-4 py-4 space-y-4">
+
+        <!-- Infection Suspicion Checkbox -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md">
+            <label class="flex items-center space-x-3 cursor-pointer">
+                <input type="checkbox" id="infectionSuspicion" class="w-5 h-5 rounded text-blue-600 focus:ring-blue-500">
+                <span class="font-medium">감염 의심 (Suspected Infection)</span>
+            </label>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 ml-8">
+                Sepsis-3 기준: 감염 의심 + SOFA ≥ 2
+            </p>
+        </div>
+
+        <!-- 1. Respiration Section -->
+        <section class="section-card bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md" id="respirationSection" data-score="0">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold flex items-center">
+                    <span class="mr-2">1.</span> 호흡기 (Respiration)
+                </h2>
+                <span class="score-badge px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 font-bold" id="respirationScore">0</span>
+            </div>
+
+            <!-- Input Mode Toggle -->
+            <div class="flex space-x-4 mb-3">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="radio" name="oxygenMode" value="pao2" checked class="text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm">PaO2 (동맥혈)</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="radio" name="oxygenMode" value="spo2" class="text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm">SpO2 (맥박산소)</span>
+                </label>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1" id="oxygenLabel">PaO2 (mmHg)</label>
+                    <input type="number" id="oxygenValue" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="예: 80">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">O2 유량 (L/min)</label>
+                    <input type="number" id="o2Flow" min="0" max="15" step="0.5" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="0-15">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-3 text-sm">
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-2">
+                    <span class="text-gray-500 dark:text-gray-400">FiO2:</span>
+                    <span class="font-semibold ml-1" id="fio2Display">21%</span>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-2">
+                    <span class="text-gray-500 dark:text-gray-400">P/F Ratio:</span>
+                    <span class="font-semibold ml-1" id="pfRatioDisplay">-</span>
+                </div>
+            </div>
+
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="ventilator" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500">
+                <span class="text-sm">인공호흡기 사용 중</span>
+            </label>
+        </section>
+
+        <!-- 2. Coagulation Section -->
+        <section class="section-card bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md" id="coagulationSection" data-score="0">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold flex items-center">
+                    <span class="mr-2">2.</span> 응고 (Coagulation)
+                </h2>
+                <span class="score-badge px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 font-bold" id="coagulationScore">0</span>
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">혈소판 (cells/μL)</label>
+                <input type="number" id="platelets" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="예: 150000">
+            </div>
+
+            <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                ≥150,000 (0점) | &lt;150,000 (1점) | &lt;100,000 (2점) | &lt;50,000 (3점) | &lt;20,000 (4점)
+            </div>
+        </section>
+
+        <!-- 3. Liver Section -->
+        <section class="section-card bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md" id="liverSection" data-score="0">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold flex items-center">
+                    <span class="mr-2">3.</span> 간 (Liver)
+                </h2>
+                <span class="score-badge px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 font-bold" id="liverScore">0</span>
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Bilirubin (mg/dL)</label>
+                <input type="number" id="bilirubin" step="0.1" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="예: 1.0">
+            </div>
+
+            <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                &lt;1.2 (0점) | 1.2-1.9 (1점) | 2.0-5.9 (2점) | 6.0-11.9 (3점) | ≥12.0 (4점)
+            </div>
+        </section>
+
+        <!-- 4. Cardiovascular Section -->
+        <section class="section-card bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md" id="cardiovascularSection" data-score="0">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold flex items-center">
+                    <span class="mr-2">4.</span> 순환기 (Cardiovascular)
+                </h2>
+                <span class="score-badge px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 font-bold" id="cardiovascularScore">0</span>
+            </div>
+
+            <!-- MAP Input Mode Toggle -->
+            <div class="flex space-x-4 mb-3">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="radio" name="bpMode" value="sbpdbp" checked class="text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm">SBP/DBP 입력</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="radio" name="bpMode" value="map" class="text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm">MAP 직접 입력</span>
+                </label>
+            </div>
+
+            <!-- SBP/DBP Input -->
+            <div id="sbpdbpInput" class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">SBP (mmHg)</label>
+                    <input type="number" id="sbp" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="예: 120">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">DBP (mmHg)</label>
+                    <input type="number" id="dbp" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="예: 80">
+                </div>
+            </div>
+
+            <!-- MAP Direct Input -->
+            <div id="mapInput" class="hidden mb-3">
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">MAP (mmHg)</label>
+                <input type="number" id="mapDirect" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="예: 70">
+            </div>
+
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-2 mb-3 text-sm">
+                <span class="text-gray-500 dark:text-gray-400">계산된 MAP:</span>
+                <span class="font-semibold ml-1" id="mapDisplay">-</span>
+            </div>
+
+            <!-- Vasopressor Selection -->
+            <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">승압제 (Vasopressor)</label>
+                <select id="vasopressor" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="none">없음 (None)</option>
+                    <option value="dopamine_low">Dopamine ≤5 μg/kg/min</option>
+                    <option value="dobutamine">Dobutamine (any dose)</option>
+                    <option value="dopamine_mid">Dopamine >5 μg/kg/min</option>
+                    <option value="ne_epi_low">NE/Epi ≤0.1 μg/kg/min</option>
+                    <option value="dopamine_high">Dopamine >15 μg/kg/min</option>
+                    <option value="ne_epi_high">NE/Epi >0.1 μg/kg/min</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- 5. CNS Section -->
+        <section class="section-card bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md" id="cnsSection" data-score="0">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold flex items-center">
+                    <span class="mr-2">5.</span> 중추신경계 (CNS)
+                </h2>
+                <span class="score-badge px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 font-bold" id="cnsScore">0</span>
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">GCS Score</label>
+                <select id="gcs" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="15">15 (정상)</option>
+                    <option value="14">14</option>
+                    <option value="13">13</option>
+                    <option value="12">12</option>
+                    <option value="11">11</option>
+                    <option value="10">10</option>
+                    <option value="9">9</option>
+                    <option value="8">8</option>
+                    <option value="7">7</option>
+                    <option value="6">6</option>
+                    <option value="5">5</option>
+                    <option value="4">4</option>
+                    <option value="3">3 (최저)</option>
+                </select>
+            </div>
+
+            <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                15 (0점) | 13-14 (1점) | 10-12 (2점) | 6-9 (3점) | &lt;6 (4점)
+            </div>
+        </section>
+
+        <!-- 6. Renal Section -->
+        <section class="section-card bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md" id="renalSection" data-score="0">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold flex items-center">
+                    <span class="mr-2">6.</span> 신장 (Renal)
+                </h2>
+                <span class="score-badge px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 font-bold" id="renalScore">0</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Creatinine (mg/dL)</label>
+                    <input type="number" id="creatinine" step="0.1" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="예: 1.0">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">소변량 (mL/day)</label>
+                    <input type="number" id="urineOutput" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="선택입력">
+                </div>
+            </div>
+
+            <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                &lt;1.2 (0점) | 1.2-1.9 (1점) | 2.0-3.4 (2점) | 3.5-4.9 또는 소변량 &lt;500 (3점) | ≥5.0 또는 소변량 &lt;200 (4점)
+            </div>
+        </section>
+
+        <!-- Reset Button -->
+        <button id="resetBtn" class="w-full py-3 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-xl shadow-md transition">
+            초기화
+        </button>
+
+        <!-- Disclaimer -->
+        <div class="text-center text-xs text-gray-500 dark:text-gray-400 py-4">
+            <p>본 앱은 참고용이며, 의료 전문가의 판단을 대체하지 않습니다.</p>
+            <p class="mt-1">SOFA Score Calculator v1.0</p>
+        </div>
+
+    </main>
+
+    <script>
+        // ============================================
+        // SOFA Score Calculator - Main JavaScript
+        // ============================================
+
+        // DOM Elements
+        const elements = {
+            // Header
+            totalScore: document.getElementById('totalScore'),
+            mortality: document.getElementById('mortality'),
+            sepsisAlert: document.getElementById('sepsisAlert'),
+            darkModeToggle: document.getElementById('darkModeToggle'),
+
+            // Infection
+            infectionSuspicion: document.getElementById('infectionSuspicion'),
+
+            // Respiration
+            oxygenMode: document.getElementsByName('oxygenMode'),
+            oxygenLabel: document.getElementById('oxygenLabel'),
+            oxygenValue: document.getElementById('oxygenValue'),
+            o2Flow: document.getElementById('o2Flow'),
+            fio2Display: document.getElementById('fio2Display'),
+            pfRatioDisplay: document.getElementById('pfRatioDisplay'),
+            ventilator: document.getElementById('ventilator'),
+            respirationScore: document.getElementById('respirationScore'),
+            respirationSection: document.getElementById('respirationSection'),
+
+            // Coagulation
+            platelets: document.getElementById('platelets'),
+            coagulationScore: document.getElementById('coagulationScore'),
+            coagulationSection: document.getElementById('coagulationSection'),
+
+            // Liver
+            bilirubin: document.getElementById('bilirubin'),
+            liverScore: document.getElementById('liverScore'),
+            liverSection: document.getElementById('liverSection'),
+
+            // Cardiovascular
+            bpMode: document.getElementsByName('bpMode'),
+            sbpdbpInput: document.getElementById('sbpdbpInput'),
+            mapInput: document.getElementById('mapInput'),
+            sbp: document.getElementById('sbp'),
+            dbp: document.getElementById('dbp'),
+            mapDirect: document.getElementById('mapDirect'),
+            mapDisplay: document.getElementById('mapDisplay'),
+            vasopressor: document.getElementById('vasopressor'),
+            cardiovascularScore: document.getElementById('cardiovascularScore'),
+            cardiovascularSection: document.getElementById('cardiovascularSection'),
+
+            // CNS
+            gcs: document.getElementById('gcs'),
+            cnsScore: document.getElementById('cnsScore'),
+            cnsSection: document.getElementById('cnsSection'),
+
+            // Renal
+            creatinine: document.getElementById('creatinine'),
+            urineOutput: document.getElementById('urineOutput'),
+            renalScore: document.getElementById('renalScore'),
+            renalSection: document.getElementById('renalSection'),
+
+            // Reset
+            resetBtn: document.getElementById('resetBtn')
+        };
+
+        // ============================================
+        // Dark Mode
+        // ============================================
+        function initDarkMode() {
+            const isDark = localStorage.getItem('darkMode') === 'true' ||
+                          (localStorage.getItem('darkMode') === null &&
+                           window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            }
+        }
+
+        elements.darkModeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
+        });
+
+        initDarkMode();
+
+        // ============================================
+        // Score Color Styling
+        // ============================================
+        function getScoreColor(score) {
+            const colors = {
+                0: { bg: 'bg-gray-200 dark:bg-gray-700', border: 'border-gray-300 dark:border-gray-600' },
+                1: { bg: 'bg-yellow-100 dark:bg-yellow-900', border: 'border-yellow-400 dark:border-yellow-600' },
+                2: { bg: 'bg-yellow-300 dark:bg-yellow-700', border: 'border-yellow-500 dark:border-yellow-500' },
+                3: { bg: 'bg-orange-300 dark:bg-orange-700', border: 'border-orange-500 dark:border-orange-500' },
+                4: { bg: 'bg-red-400 dark:bg-red-700', border: 'border-red-500 dark:border-red-500' }
+            };
+            return colors[score] || colors[0];
+        }
+
+        function updateSectionStyle(section, scoreElement, score) {
+            const color = getScoreColor(score);
+
+            // Update score badge
+            scoreElement.textContent = score;
+            scoreElement.className = `score-badge px-3 py-1 rounded-full font-bold ${color.bg}`;
+
+            // Update section border
+            section.className = `section-card bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md border-l-4 ${color.border}`;
+            section.dataset.score = score;
+        }
+
+        // ============================================
+        // Calculation Functions
+        // ============================================
+
+        // 1. Respiration Score
+        function calculateRespirationScore() {
+            const o2Flow = parseFloat(elements.o2Flow.value) || 0;
+            const oxygenValue = parseFloat(elements.oxygenValue.value);
+            const isVentilator = elements.ventilator.checked;
+
+            // Calculate FiO2
+            const fio2 = 21 + (o2Flow * 4);
+            elements.fio2Display.textContent = `${fio2.toFixed(0)}%`;
+
+            if (!oxygenValue || oxygenValue <= 0) {
+                elements.pfRatioDisplay.textContent = '-';
+                updateSectionStyle(elements.respirationSection, elements.respirationScore, 0);
+                return 0;
+            }
+
+            // Calculate P/F Ratio
+            const pfRatio = oxygenValue / (fio2 / 100);
+            elements.pfRatioDisplay.textContent = pfRatio.toFixed(0);
+
+            // Determine score
+            let score = 0;
+            if (pfRatio < 100 && isVentilator) {
+                score = 4;
+            } else if (pfRatio < 200 && isVentilator) {
+                score = 3;
+            } else if (pfRatio < 300) {
+                score = 2;
+            } else if (pfRatio < 400) {
+                score = 1;
+            }
+
+            updateSectionStyle(elements.respirationSection, elements.respirationScore, score);
+            return score;
+        }
+
+        // 2. Coagulation Score
+        function calculateCoagulationScore() {
+            const platelets = parseFloat(elements.platelets.value);
+
+            if (!platelets && platelets !== 0) {
+                updateSectionStyle(elements.coagulationSection, elements.coagulationScore, 0);
+                return 0;
+            }
+
+            let score = 0;
+            if (platelets < 20000) {
+                score = 4;
+            } else if (platelets < 50000) {
+                score = 3;
+            } else if (platelets < 100000) {
+                score = 2;
+            } else if (platelets < 150000) {
+                score = 1;
+            }
+
+            updateSectionStyle(elements.coagulationSection, elements.coagulationScore, score);
+            return score;
+        }
+
+        // 3. Liver Score
+        function calculateLiverScore() {
+            const bilirubin = parseFloat(elements.bilirubin.value);
+
+            if (!bilirubin && bilirubin !== 0) {
+                updateSectionStyle(elements.liverSection, elements.liverScore, 0);
+                return 0;
+            }
+
+            let score = 0;
+            if (bilirubin >= 12.0) {
+                score = 4;
+            } else if (bilirubin >= 6.0) {
+                score = 3;
+            } else if (bilirubin >= 2.0) {
+                score = 2;
+            } else if (bilirubin >= 1.2) {
+                score = 1;
+            }
+
+            updateSectionStyle(elements.liverSection, elements.liverScore, score);
+            return score;
+        }
+
+        // 4. Cardiovascular Score
+        function calculateCardiovascularScore() {
+            const bpMode = document.querySelector('input[name="bpMode"]:checked').value;
+            let map;
+
+            if (bpMode === 'sbpdbp') {
+                const sbp = parseFloat(elements.sbp.value);
+                const dbp = parseFloat(elements.dbp.value);
+
+                if (sbp && dbp) {
+                    map = (sbp + 2 * dbp) / 3;
+                    elements.mapDisplay.textContent = `${map.toFixed(0)} mmHg`;
+                } else {
+                    elements.mapDisplay.textContent = '-';
+                    map = null;
+                }
+            } else {
+                map = parseFloat(elements.mapDirect.value);
+                elements.mapDisplay.textContent = map ? `${map.toFixed(0)} mmHg` : '-';
+            }
+
+            const vasopressor = elements.vasopressor.value;
+
+            let score = 0;
+
+            // Vasopressor takes precedence
+            if (vasopressor === 'dopamine_high' || vasopressor === 'ne_epi_high') {
+                score = 4;
+            } else if (vasopressor === 'dopamine_mid' || vasopressor === 'ne_epi_low') {
+                score = 3;
+            } else if (vasopressor === 'dopamine_low' || vasopressor === 'dobutamine') {
+                score = 2;
+            } else if (map !== null && map < 70) {
+                score = 1;
+            }
+
+            updateSectionStyle(elements.cardiovascularSection, elements.cardiovascularScore, score);
+            return score;
+        }
+
+        // 5. CNS Score
+        function calculateCNSScore() {
+            const gcs = parseInt(elements.gcs.value);
+
+            let score = 0;
+            if (gcs < 6) {
+                score = 4;
+            } else if (gcs <= 9) {
+                score = 3;
+            } else if (gcs <= 12) {
+                score = 2;
+            } else if (gcs <= 14) {
+                score = 1;
+            }
+
+            updateSectionStyle(elements.cnsSection, elements.cnsScore, score);
+            return score;
+        }
+
+        // 6. Renal Score
+        function calculateRenalScore() {
+            const creatinine = parseFloat(elements.creatinine.value);
+            const urineOutput = parseFloat(elements.urineOutput.value);
+
+            let score = 0;
+
+            // Check urine output first (if provided)
+            if (urineOutput && urineOutput < 200) {
+                score = 4;
+            } else if (urineOutput && urineOutput < 500) {
+                score = 3;
+            }
+
+            // Check creatinine
+            if (creatinine >= 5.0) {
+                score = Math.max(score, 4);
+            } else if (creatinine >= 3.5) {
+                score = Math.max(score, 3);
+            } else if (creatinine >= 2.0) {
+                score = Math.max(score, 2);
+            } else if (creatinine >= 1.2) {
+                score = Math.max(score, 1);
+            }
+
+            if (!creatinine && !urineOutput) {
+                score = 0;
+            }
+
+            updateSectionStyle(elements.renalSection, elements.renalScore, score);
+            return score;
+        }
+
+        // ============================================
+        // Total Score and Mortality
+        // ============================================
+        function getMortality(score) {
+            if (score <= 1) return '<10%';
+            if (score <= 3) return '15-20%';
+            if (score <= 5) return '20-25%';
+            if (score <= 7) return '25-30%';
+            if (score <= 9) return '35-40%';
+            if (score <= 11) return '40-50%';
+            if (score <= 14) return '50-60%';
+            return '>80%';
+        }
+
+        function calculateTotalScore() {
+            const scores = {
+                respiration: calculateRespirationScore(),
+                coagulation: calculateCoagulationScore(),
+                liver: calculateLiverScore(),
+                cardiovascular: calculateCardiovascularScore(),
+                cns: calculateCNSScore(),
+                renal: calculateRenalScore()
+            };
+
+            const total = Object.values(scores).reduce((sum, s) => sum + s, 0);
+
+            elements.totalScore.textContent = total;
+            elements.mortality.textContent = getMortality(total);
+
+            // Update header color based on total score
+            const header = document.querySelector('header');
+            if (total >= 10) {
+                header.className = 'sticky-header sticky top-0 z-50 bg-red-600 dark:bg-red-800 text-white shadow-lg';
+            } else if (total >= 6) {
+                header.className = 'sticky-header sticky top-0 z-50 bg-orange-500 dark:bg-orange-700 text-white shadow-lg';
+            } else if (total >= 3) {
+                header.className = 'sticky-header sticky top-0 z-50 bg-yellow-500 dark:bg-yellow-700 text-white shadow-lg';
+            } else {
+                header.className = 'sticky-header sticky top-0 z-50 bg-blue-600 dark:bg-blue-800 text-white shadow-lg';
+            }
+
+            // Check Sepsis criteria
+            const hasInfection = elements.infectionSuspicion.checked;
+            if (hasInfection && total >= 2) {
+                elements.sepsisAlert.classList.remove('hidden');
+            } else {
+                elements.sepsisAlert.classList.add('hidden');
+            }
+
+            return total;
+        }
+
+        // ============================================
+        // Event Listeners
+        // ============================================
+
+        // Oxygen mode toggle
+        elements.oxygenMode.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'pao2') {
+                    elements.oxygenLabel.textContent = 'PaO2 (mmHg)';
+                    elements.oxygenValue.placeholder = '예: 80';
+                } else {
+                    elements.oxygenLabel.textContent = 'SpO2 (%)';
+                    elements.oxygenValue.placeholder = '예: 95';
+                }
+                calculateTotalScore();
+            });
+        });
+
+        // BP mode toggle
+        elements.bpMode.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'sbpdbp') {
+                    elements.sbpdbpInput.classList.remove('hidden');
+                    elements.mapInput.classList.add('hidden');
+                } else {
+                    elements.sbpdbpInput.classList.add('hidden');
+                    elements.mapInput.classList.remove('hidden');
+                }
+                calculateTotalScore();
+            });
+        });
+
+        // All input event listeners
+        const allInputs = [
+            elements.oxygenValue, elements.o2Flow, elements.ventilator,
+            elements.platelets, elements.bilirubin,
+            elements.sbp, elements.dbp, elements.mapDirect, elements.vasopressor,
+            elements.gcs, elements.creatinine, elements.urineOutput,
+            elements.infectionSuspicion
+        ];
+
+        allInputs.forEach(input => {
+            if (input) {
+                input.addEventListener('input', calculateTotalScore);
+                input.addEventListener('change', calculateTotalScore);
+            }
+        });
+
+        // Reset button
+        elements.resetBtn.addEventListener('click', () => {
+            // Reset all inputs
+            elements.oxygenValue.value = '';
+            elements.o2Flow.value = '';
+            elements.ventilator.checked = false;
+            elements.platelets.value = '';
+            elements.bilirubin.value = '';
+            elements.sbp.value = '';
+            elements.dbp.value = '';
+            elements.mapDirect.value = '';
+            elements.vasopressor.value = 'none';
+            elements.gcs.value = '15';
+            elements.creatinine.value = '';
+            elements.urineOutput.value = '';
+            elements.infectionSuspicion.checked = false;
+
+            // Reset radio buttons to default
+            document.querySelector('input[name="oxygenMode"][value="pao2"]').checked = true;
+            document.querySelector('input[name="bpMode"][value="sbpdbp"]').checked = true;
+            elements.oxygenLabel.textContent = 'PaO2 (mmHg)';
+            elements.oxygenValue.placeholder = '예: 80';
+            elements.sbpdbpInput.classList.remove('hidden');
+            elements.mapInput.classList.add('hidden');
+
+            // Reset displays
+            elements.fio2Display.textContent = '21%';
+            elements.pfRatioDisplay.textContent = '-';
+            elements.mapDisplay.textContent = '-';
+
+            calculateTotalScore();
+        });
+
+        // Initial calculation
+        calculateTotalScore();
+
+        // ============================================
+        // Service Worker Registration
+        // ============================================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
