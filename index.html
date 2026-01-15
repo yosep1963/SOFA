@@ -275,21 +275,29 @@
 
             <div>
                 <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">GCS Score</label>
-                <select id="gcs" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option value="15">15 (정상)</option>
-                    <option value="14">14</option>
-                    <option value="13">13</option>
-                    <option value="12">12</option>
-                    <option value="11">11</option>
-                    <option value="10">10</option>
-                    <option value="9">9</option>
-                    <option value="8">8</option>
-                    <option value="7">7</option>
-                    <option value="6">6</option>
-                    <option value="5">5</option>
-                    <option value="4">4</option>
-                    <option value="3">3 (최저)</option>
-                </select>
+                <div class="flex items-center space-x-2">
+                    <select id="gcs" class="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="15">15 (정상)</option>
+                        <option value="14">14</option>
+                        <option value="13">13</option>
+                        <option value="12">12</option>
+                        <option value="11">11</option>
+                        <option value="10">10</option>
+                        <option value="9">9</option>
+                        <option value="8">8</option>
+                        <option value="7">7</option>
+                        <option value="6">6</option>
+                        <option value="5">5</option>
+                        <option value="4">4</option>
+                        <option value="3">3 (최저)</option>
+                    </select>
+                    <button id="gcsCalcBtn" type="button" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 text-white font-medium rounded-lg transition flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        <span>계산</span>
+                    </button>
+                </div>
             </div>
 
             <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -330,10 +338,180 @@
         <!-- Disclaimer -->
         <div class="text-center text-xs text-gray-500 dark:text-gray-400 py-4">
             <p>본 앱은 참고용이며, 의료 전문가의 판단을 대체하지 않습니다.</p>
-            <p class="mt-1">SOFA Score Calculator v1.0</p>
+            <p class="mt-1">SOFA Score Calculator v1.1</p>
         </div>
 
     </main>
+
+    <!-- GCS Calculator Modal -->
+    <div id="gcsModal" class="fixed inset-0 z-50 hidden">
+        <!-- Overlay -->
+        <div id="gcsModalOverlay" class="absolute inset-0 bg-black bg-opacity-50"></div>
+
+        <!-- Modal Content -->
+        <div class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <!-- Modal Header -->
+            <div class="bg-purple-600 dark:bg-purple-800 text-white px-4 py-3 flex items-center justify-between">
+                <h3 class="text-lg font-bold">GCS Calculator</h3>
+                <button id="gcsModalClose" class="p-1 hover:bg-purple-500 dark:hover:bg-purple-700 rounded-lg transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+
+                <!-- Intubation Toggle -->
+                <div class="bg-yellow-50 dark:bg-yellow-900/30 rounded-xl p-3">
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="gcsIntubated" class="w-5 h-5 rounded text-yellow-600 focus:ring-yellow-500">
+                        <div>
+                            <span class="font-medium text-yellow-800 dark:text-yellow-200">기관삽관 환자</span>
+                            <p class="text-xs text-yellow-600 dark:text-yellow-400">Verbal 평가 불가 (NT)</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Eye Opening -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-3">
+                    <h4 class="font-semibold text-blue-600 dark:text-blue-400 mb-2">Eye Opening (E)</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsEye" value="4" checked class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                            <span class="flex-1"><span class="font-medium">4</span> - Spontaneous (자발적)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsEye" value="3" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                            <span class="flex-1"><span class="font-medium">3</span> - To voice (음성에)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsEye" value="2" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                            <span class="flex-1"><span class="font-medium">2</span> - To pain (통증에)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsEye" value="1" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                            <span class="flex-1"><span class="font-medium">1</span> - None (없음)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Verbal Response -->
+                <div id="gcsVerbalSection" class="bg-gray-50 dark:bg-gray-700 rounded-xl p-3">
+                    <h4 class="font-semibold text-green-600 dark:text-green-400 mb-2">Verbal Response (V)</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsVerbal" value="5" checked class="w-4 h-4 text-green-600 focus:ring-green-500">
+                            <span class="flex-1"><span class="font-medium">5</span> - Oriented (지남력 정상)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsVerbal" value="4" class="w-4 h-4 text-green-600 focus:ring-green-500">
+                            <span class="flex-1"><span class="font-medium">4</span> - Confused (혼란)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsVerbal" value="3" class="w-4 h-4 text-green-600 focus:ring-green-500">
+                            <span class="flex-1"><span class="font-medium">3</span> - Inappropriate words (부적절한 단어)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsVerbal" value="2" class="w-4 h-4 text-green-600 focus:ring-green-500">
+                            <span class="flex-1"><span class="font-medium">2</span> - Incomprehensible sounds (이해 불가 소리)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsVerbal" value="1" class="w-4 h-4 text-green-600 focus:ring-green-500">
+                            <span class="flex-1"><span class="font-medium">1</span> - None (없음)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Verbal NT (for intubated) -->
+                <div id="gcsVerbalNT" class="hidden bg-gray-100 dark:bg-gray-600 rounded-xl p-3">
+                    <h4 class="font-semibold text-gray-500 dark:text-gray-400 mb-2">Verbal Response (V)</h4>
+                    <div class="text-center py-4">
+                        <span class="text-2xl font-bold text-gray-400 dark:text-gray-500">NT</span>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Not Testable (기관삽관)</p>
+                    </div>
+                </div>
+
+                <!-- Motor Response -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-3">
+                    <h4 class="font-semibold text-orange-600 dark:text-orange-400 mb-2">Motor Response (M)</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsMotor" value="6" checked class="w-4 h-4 text-orange-600 focus:ring-orange-500">
+                            <span class="flex-1"><span class="font-medium">6</span> - Obeys commands (명령 수행)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsMotor" value="5" class="w-4 h-4 text-orange-600 focus:ring-orange-500">
+                            <span class="flex-1"><span class="font-medium">5</span> - Localizes pain (통증 위치 파악)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsMotor" value="4" class="w-4 h-4 text-orange-600 focus:ring-orange-500">
+                            <span class="flex-1"><span class="font-medium">4</span> - Withdrawal (회피 반응)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsMotor" value="3" class="w-4 h-4 text-orange-600 focus:ring-orange-500">
+                            <span class="flex-1"><span class="font-medium">3</span> - Abnormal flexion (제피질 자세)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsMotor" value="2" class="w-4 h-4 text-orange-600 focus:ring-orange-500">
+                            <span class="flex-1"><span class="font-medium">2</span> - Extension (제뇌 자세)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                            <input type="radio" name="gcsMotor" value="1" class="w-4 h-4 text-orange-600 focus:ring-orange-500">
+                            <span class="flex-1"><span class="font-medium">1</span> - None (없음)</span>
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Result Section -->
+            <div class="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900">
+                <!-- GCS Score Display -->
+                <div class="grid grid-cols-3 gap-3 mb-3">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="gcsEyeDisplay">E4</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-600 dark:text-green-400" id="gcsVerbalDisplay">V5</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-orange-600 dark:text-orange-400" id="gcsMotorDisplay">M6</div>
+                    </div>
+                </div>
+
+                <!-- Total Score -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl p-3 mb-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-3xl font-bold" id="gcsTotalDisplay">15</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400" id="gcsLevelDisplay">정상</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm text-gray-500 dark:text-gray-400">SOFA CNS</div>
+                            <div class="text-2xl font-bold text-purple-600 dark:text-purple-400" id="gcsSofaDisplay">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Airway Alert -->
+                <div id="gcsAirwayAlert" class="hidden mb-3 p-2 bg-red-100 dark:bg-red-900/50 border border-red-300 dark:border-red-700 rounded-lg text-center">
+                    <span class="text-red-700 dark:text-red-300 font-semibold">GCS ≤ 8: 기도 보호 능력 저하 - 기관삽관 고려</span>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex space-x-3">
+                    <button id="gcsApplyBtn" class="flex-1 py-3 bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 text-white font-semibold rounded-xl transition">
+                        적용
+                    </button>
+                    <button id="gcsCancelBtn" class="flex-1 py-3 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white font-semibold rounded-xl transition">
+                        취소
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         // ============================================
@@ -760,6 +938,224 @@
 
         // Initial calculation
         calculateTotalScore();
+
+        // ============================================
+        // GCS Calculator Modal
+        // ============================================
+
+        // GCS Modal DOM Elements
+        const gcsModalElements = {
+            modal: document.getElementById('gcsModal'),
+            overlay: document.getElementById('gcsModalOverlay'),
+            closeBtn: document.getElementById('gcsModalClose'),
+            calcBtn: document.getElementById('gcsCalcBtn'),
+            applyBtn: document.getElementById('gcsApplyBtn'),
+            cancelBtn: document.getElementById('gcsCancelBtn'),
+            intubated: document.getElementById('gcsIntubated'),
+            verbalSection: document.getElementById('gcsVerbalSection'),
+            verbalNT: document.getElementById('gcsVerbalNT'),
+            eyeDisplay: document.getElementById('gcsEyeDisplay'),
+            verbalDisplay: document.getElementById('gcsVerbalDisplay'),
+            motorDisplay: document.getElementById('gcsMotorDisplay'),
+            totalDisplay: document.getElementById('gcsTotalDisplay'),
+            levelDisplay: document.getElementById('gcsLevelDisplay'),
+            sofaDisplay: document.getElementById('gcsSofaDisplay'),
+            airwayAlert: document.getElementById('gcsAirwayAlert'),
+            eyeRadios: document.getElementsByName('gcsEye'),
+            verbalRadios: document.getElementsByName('gcsVerbal'),
+            motorRadios: document.getElementsByName('gcsMotor')
+        };
+
+        // Open GCS Modal
+        function openGcsModal() {
+            gcsModalElements.modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            calculateGcsFromModal();
+        }
+
+        // Close GCS Modal
+        function closeGcsModal() {
+            gcsModalElements.modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // Get consciousness level description
+        function getGcsLevel(gcs, isIntubated) {
+            if (isIntubated) {
+                // For intubated patients, estimate based on E+M only
+                const em = gcs;
+                if (em >= 10) return '정상 추정';
+                if (em >= 8) return '경도 장애 추정';
+                if (em >= 6) return '중등도 장애 추정';
+                if (em >= 4) return '중증 장애 추정';
+                return '혼수 추정';
+            } else {
+                if (gcs === 15) return '정상';
+                if (gcs >= 13) return '경도 장애';
+                if (gcs >= 9) return '중등도 장애';
+                if (gcs >= 6) return '중증 장애';
+                return '혼수';
+            }
+        }
+
+        // Get SOFA CNS score from GCS
+        function getGcsSofaScore(gcs, isIntubated) {
+            if (isIntubated) {
+                // For intubated: estimate based on E+M (max 10)
+                // Approximate mapping: E+M 10 -> GCS ~15, E+M 2 -> GCS ~3
+                const estimatedGcs = Math.round((gcs / 10) * 12 + 3);
+                if (estimatedGcs >= 15) return 0;
+                if (estimatedGcs >= 13) return 1;
+                if (estimatedGcs >= 10) return 2;
+                if (estimatedGcs >= 6) return 3;
+                return 4;
+            } else {
+                if (gcs >= 15) return 0;
+                if (gcs >= 13) return 1;
+                if (gcs >= 10) return 2;
+                if (gcs >= 6) return 3;
+                return 4;
+            }
+        }
+
+        // Calculate GCS from modal selections
+        function calculateGcsFromModal() {
+            const isIntubated = gcsModalElements.intubated.checked;
+
+            // Get selected values
+            let eyeScore = 4;
+            let verbalScore = 5;
+            let motorScore = 6;
+
+            gcsModalElements.eyeRadios.forEach(radio => {
+                if (radio.checked) eyeScore = parseInt(radio.value);
+            });
+
+            gcsModalElements.verbalRadios.forEach(radio => {
+                if (radio.checked) verbalScore = parseInt(radio.value);
+            });
+
+            gcsModalElements.motorRadios.forEach(radio => {
+                if (radio.checked) motorScore = parseInt(radio.value);
+            });
+
+            // Update displays
+            gcsModalElements.eyeDisplay.textContent = `E${eyeScore}`;
+            gcsModalElements.motorDisplay.textContent = `M${motorScore}`;
+
+            let totalGcs;
+            if (isIntubated) {
+                // Verbal is NT for intubated patients
+                gcsModalElements.verbalSection.classList.add('hidden');
+                gcsModalElements.verbalNT.classList.remove('hidden');
+                gcsModalElements.verbalDisplay.textContent = 'VT';
+                gcsModalElements.verbalDisplay.classList.add('text-gray-400');
+                gcsModalElements.verbalDisplay.classList.remove('text-green-600', 'dark:text-green-400');
+
+                totalGcs = eyeScore + motorScore;
+                gcsModalElements.totalDisplay.textContent = `${totalGcs}T`;
+
+                // Check airway alert (using E+M <= 5 as equivalent to GCS <= 8)
+                if (totalGcs <= 5) {
+                    gcsModalElements.airwayAlert.classList.remove('hidden');
+                } else {
+                    gcsModalElements.airwayAlert.classList.add('hidden');
+                }
+            } else {
+                // Normal calculation
+                gcsModalElements.verbalSection.classList.remove('hidden');
+                gcsModalElements.verbalNT.classList.add('hidden');
+                gcsModalElements.verbalDisplay.textContent = `V${verbalScore}`;
+                gcsModalElements.verbalDisplay.classList.remove('text-gray-400');
+                gcsModalElements.verbalDisplay.classList.add('text-green-600', 'dark:text-green-400');
+
+                totalGcs = eyeScore + verbalScore + motorScore;
+                gcsModalElements.totalDisplay.textContent = totalGcs;
+
+                // Check airway alert
+                if (totalGcs <= 8) {
+                    gcsModalElements.airwayAlert.classList.remove('hidden');
+                } else {
+                    gcsModalElements.airwayAlert.classList.add('hidden');
+                }
+            }
+
+            // Update level and SOFA displays
+            const level = getGcsLevel(totalGcs, isIntubated);
+            const sofaScore = getGcsSofaScore(totalGcs, isIntubated);
+
+            gcsModalElements.levelDisplay.textContent = level;
+            gcsModalElements.sofaDisplay.textContent = sofaScore;
+
+            // Color code the level
+            const levelEl = gcsModalElements.levelDisplay;
+            levelEl.className = 'text-sm';
+            if (level.includes('정상')) {
+                levelEl.classList.add('text-green-600', 'dark:text-green-400');
+            } else if (level.includes('경도')) {
+                levelEl.classList.add('text-yellow-600', 'dark:text-yellow-400');
+            } else if (level.includes('중등도')) {
+                levelEl.classList.add('text-orange-600', 'dark:text-orange-400');
+            } else if (level.includes('중증')) {
+                levelEl.classList.add('text-red-500', 'dark:text-red-400');
+            } else {
+                levelEl.classList.add('text-red-700', 'dark:text-red-300', 'font-semibold');
+            }
+
+            return { totalGcs, isIntubated, eyeScore, verbalScore, motorScore };
+        }
+
+        // Apply GCS to main form
+        function applyGcsToMain() {
+            const result = calculateGcsFromModal();
+            let gcsValue;
+
+            if (result.isIntubated) {
+                // For intubated patients, estimate full GCS
+                // E + M, assume V=1T for SOFA calculation
+                gcsValue = result.eyeScore + 1 + result.motorScore;
+            } else {
+                gcsValue = result.totalGcs;
+            }
+
+            // Clamp to valid range
+            gcsValue = Math.max(3, Math.min(15, gcsValue));
+
+            // Update main dropdown
+            elements.gcs.value = gcsValue.toString();
+
+            // Recalculate total SOFA score
+            calculateTotalScore();
+
+            // Close modal
+            closeGcsModal();
+        }
+
+        // GCS Modal Event Listeners
+        gcsModalElements.calcBtn.addEventListener('click', openGcsModal);
+        gcsModalElements.closeBtn.addEventListener('click', closeGcsModal);
+        gcsModalElements.overlay.addEventListener('click', closeGcsModal);
+        gcsModalElements.cancelBtn.addEventListener('click', closeGcsModal);
+        gcsModalElements.applyBtn.addEventListener('click', applyGcsToMain);
+
+        // Intubation toggle
+        gcsModalElements.intubated.addEventListener('change', calculateGcsFromModal);
+
+        // E/V/M radio changes
+        gcsModalElements.eyeRadios.forEach(radio => {
+            radio.addEventListener('change', calculateGcsFromModal);
+        });
+        gcsModalElements.verbalRadios.forEach(radio => {
+            radio.addEventListener('change', calculateGcsFromModal);
+        });
+        gcsModalElements.motorRadios.forEach(radio => {
+            radio.addEventListener('change', calculateGcsFromModal);
+        });
+
+        // Prevent modal close on content click
+        document.querySelector('#gcsModal > div:last-child').addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
 
         // ============================================
         // Service Worker Registration

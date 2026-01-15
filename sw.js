@@ -1,5 +1,5 @@
 // Service Worker for SOFA Score Calculator PWA
-const CACHE_NAME = 'sofa-calc-v1';
+const CACHE_NAME = 'sofa-calc-v2';
 const urlsToCache = [
   '/',
   '/index.html',
